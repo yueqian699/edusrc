@@ -66,6 +66,7 @@ Windows特性
 .user.ini  
 . .  
 
+------
 下面详细展开讲解  
 1 特殊后缀  
 php
@@ -116,17 +117,21 @@ cshtmvbhtm
 cshtml  
 bhtml  
 
-2 htaccess 重写解析绕过上传  
+2 htaccess 重写解析绕过上传（中间件为apache 且不能有nginx）  
 .htaccess可以帮我们实现包括：文件夹密码保护、用户自动重定向、自定义错误页面、改变你的文件扩展名、封禁特定IP地址的用户、只允许特定IP地址的用户、禁止目录列表，以及使用其他文件作为index文件等一些功能。  
 启用.htaccess，需要修改httpd.conf，启用AllowOverride，并可以用AllowOverride限制特定命令的使用。如果需要使用.htaccess以外的其他文件名，可以用AccessFileName指令来改变。例如，需要使用.config ，则可以在服  务器配置文件中按以下方法配置：AccessFileName .config   
 
 利用条件：Apache开启重写模块
 
+传htaccess，使jpg按php解析    
 <FilesMatch ".jpg">  
 SetHandler application/x-httpd-php  
 </FilesMatch>  
 
+传图片马  
+
 3 .user.ini.  
+php环境 能传ini文件，目录必有一个能访问的php文件  
 
 auto_prepend_file=a.jpg
 
@@ -136,4 +141,108 @@ auto_prepend_file = <filename>         //包含在文件头
 方法二：  
 auto_append_file = <filename>          //包含在文件尾  
 
-4 
+4 大小写绕过  
+有的上传模块 后缀名采用黑名单判断，但是没有对后缀名的大小写进行严格判断，导致可以更改后缀大小写可以被绕过。如 PHP、 Php、 phP、pHp，（在windows上有效）
+
+5 双写后缀名绕过上传  
+在文件上传时，有的代码会把黑名单的后缀名替换成空，例如 1.php 会把 php 替换成空，但是可以使用双写绕过例如 asaspp，pphphp，即可绕过上传。  
+
+6空格绕过上传  
+在上传模块里，采用黑名单上传，如果没有对空格进行去掉可能被绕过。  
+trim()  
+
+7 后缀加点绕过  
+在 windows 中文件后缀名. 系统会自动忽略。所以 shell.php. 与 shell.php 的效果一样。所以可以在文件名后面加入 . 绕过。  
+
+8 NTFS 交换数据流::$DATA 绕过上传  
+如果后缀名没有对::$DATA 进行判断，利用 windows 系统 NTFS 特征可以绕过上传。  
+利用 windows 环境的叠加特征绕过上传  
+在 windwos 中如果上传文件名 1.php:.jpg 的时候，会在目录下生产空白的文件名 1.php，再利用 php 和 windows 环境的叠加属性，向 1.php 中写入内容  
+以下符号在正则匹配时相等  
+双引号" 等于 点号.  
+大于符号> 等于 问号?  
+小于符号< 等于 星号*  
+将文件名写为1.>>> 将文件内容进行修改后再次上传   
+1.>>>  
+
+------
+5白名单限制绕过  
+00截断  
+<img width="1247" height="1143" alt="image" src="https://github.com/user-attachments/assets/f5e828f4-98f1-404a-9a4a-e353c5a6de46" />
+
+如果url中有路径就在url中进行截断，如果没有就在请求体的body的名字中进行%00的截断，但是如果在请求体中记得编码  
+<img width="1219" height="1117" alt="image" src="https://github.com/user-attachments/assets/fa6f7253-79c0-48c6-85f5-c829e3175805" />
+
+-----
+解析漏洞  
+上面是文件上传绕过传一句话木马，也可尝试传木马图（触发条件更困难）
+
+1.解析漏洞
+
+IIS  
+IIS 5.x -6.x 解析漏洞   windows srver 2003   
+只解asp文件，aspx是不解析  
+xx.asp;jpg  
+xx.asp/xx.jpg  
+
+IIS 7.0 / 7.5  
+xx.jpg/xx.php  
+xx.jpg.php  
+
+nginx 版本小于0.8.03  
+xx.jpg/xx.php  
+xx.jpg.php  
+
+tomcat  
+cve-2017-12615  
+
+PUT /shell.jsp%20   
+PUT /shell.jsp::$DATA   
+PUT /shell.jsp/  
+ 
+Apache  
+未知后缀名解析  
+1.x-2.x  
+shell.php.aa.bb  
+
+%0a换行符绕过  
+CVE-2017-15715  
+2.4.0-2.4.29  
+
+2 文件包含路径上传  
+
+3 文件上传条件竞争漏洞绕过  
+在文件上传时，如果逻辑不对，会造成很大危害，例如文件上传时，用move_uploaded_file 把上传的临时文件移动到指定目录，  
+接着再用 rename 文件设置为图片格式，如果在 rename 之前访问到这个文件，那我们就可以获取一个 webshell。  
+利用条件
+1.对方会先将上传的文件放入临时目录下，进行判断  
+本质就是在上传的木马没有删除之前，进行一个访问触发（不停爆破）  
+<img width="1209" height="1247" alt="image" src="https://github.com/user-attachments/assets/6ae05eaf-d324-4bbe-8f08-d9aaa3e72348" />
+
+----
+当已知waf厂商  
+安全狗绕过  
+1.绕过思路：对文件的内容，数据。数据包进行处理。  
+关键点在这里
+Content-Disposition: form-data; name="file"; filename="ian.php"  
+将form-data;           修改为~form-data;  
+
+2 大小写  
+Content-Disposition: form-data; name="file"; filename="yjh.php"  
+Content-Type: application/octet-stream  
+将 Content-Disposition 修改为content-Disposition  
+将 form-data           修改为Form-data  
+将 Content-Type         修改为content-Type  
+
+3 删减空格  
+Content-Disposition: form-data; name="file"; filename="yjh.php"  
+Content-Type: application/octet-stream  
+将Content-Disposition: form-data         冒号后面 增加或减少一个空格  
+将form-data; name="file";               分号后面 增加或减少一个空格  
+将 Content-Type: application/octet-stream   冒号后面 增加一个空格  
+
+4 字符串拼接  
+看Content-Disposition: form-data; name="file"; filename="yjh3.php"  
+将 form-data 修改为   f+orm-data  
+将 from-data 修改为   form-d+ata  
+
