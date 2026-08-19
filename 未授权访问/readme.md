@@ -4,6 +4,13 @@ get、post各跑一遍看200响应码
 
 有些有组件特征的如spring boot,ruoyi 可针对性的跑api接口  
 
+有些get请求的查询模块，可拼接参数如?size=
+<img width="934" height="618" alt="搜索模块拼接？size=" src="https://github.com/user-attachments/assets/d490c432-4d7f-4fa4-a347-49a6ea2ee88b" />
+
+参数置空 =0 =% =null 都可能直接爆出所以数据
+<img width="1080" height="2400" alt="置空，null，%,0,1爆全部信息" src="https://github.com/user-attachments/assets/fb141c9c-65be-4b0e-b4c1-00df15842b82" />
+
+
 但总的来说，ai可以很高效地审计js文件，fuzz未授权接口  
 
 ---
@@ -15,6 +22,8 @@ false -> true
 <img width="1174" height="522" alt="image" src="https://github.com/user-attachments/assets/3f96b293-0201-4c52-8b67-45c65dd5965f" />
 
 删/伪造 cookie、auth鉴权头  
+
+
 
 ---
 一个很厉害的测未授权的师傅  
