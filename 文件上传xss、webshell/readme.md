@@ -332,3 +332,23 @@ xss
 <svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>  
 
 ---
+
+xss分为反射型、存储型、dom型。  
+常见过滤  
+
+想法一  
+过滤或转义payload会使用到的 单引号，双引号，尖括号  
+
+想法二  
+替换关键词使其语句失效 例如  
+1. script 替换为 sc_ript 大小写 同义替换 编码（html，unicode）  
+2. script 替换为 空 双写绕过  
+
+想法三  
+将语句中的空格都进行删除使其语句失效  
+
+双引号html编码  
+ " &quot;  
+ < &lt;  
+ > &gt;
+
