@@ -41,6 +41,8 @@ $result=mysql_query($sql);
 - Oracle：ORA-XXXXX 开头的错误代码  
 - PostgreSQL：ERROR: syntax error at or near
 
+”字符串 '…' 后的引号不完整“ 是 SQL Server 中文版标准消息（英文 Unclosed quotation mark after the character string...），MySQL 是 near ''2024-01'''，Oracle 是 ORA-01756
+
 -----
 下面逐一讲解    
 输入任何字符都会报错，并且无法闭合  
