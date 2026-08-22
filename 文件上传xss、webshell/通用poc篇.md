@@ -463,5 +463,27 @@ Unicode编码
 
 payload平台：https://cheatsheetseries.owasp.org/cheatsheets/XSS_Filter_Evasion_Cheat_Sheet.html
 
+----
+补充几个冷门的  
+">符合被实体了,把post请求改变成mutipart格式，响应包显示成功。  
+<img width="1123" height="1013" alt="image" src="https://github.com/user-attachments/assets/7c4a4d86-fbb7-48d6-ac5e-13ed73a495f1" />
+
+文本编辑器中的xss  
+<iframe src=javascript:[1].find(alert)></iframe>
+
+<img width="1261" height="1111" alt="image" src="https://github.com/user-attachments/assets/9295641a-a6c2-4680-81d8-ab7365b3fd8f" />
+
+waf过滤
+
+未知过滤，开始从<测  
+输入<<< 提示你输入的字符不允许，请重新提交！ 证明过滤了<<< 重复测试看改了些什么  
+发现unicode转义绕过行得通  
+\u003c = < ， 配一个冷门触发标签 <xml onmousemove="alert(1)">  同时注意json语法转义 \"
+
+<img width="1261" height="1111" alt="image" src="https://github.com/user-attachments/assets/593049c6-bab5-4c1f-b9c7-976a16e45f23" />
+
+<img width="1087" height="403" alt="image" src="https://github.com/user-attachments/assets/162f978c-019e-4969-903b-d769e572e79c" />
+
+
 
  
