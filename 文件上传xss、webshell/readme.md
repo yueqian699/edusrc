@@ -281,6 +281,9 @@ boundary后面加入空格。
 9 修改编码绕过  
 使用UTF-16、Unicode、双URL编码等等  
 
+10 ;;;;;;;;绕过
+Content-Disposition: form-data;;;;;;; name="file";;;;;;;; filename="yjh.php"  
+
 -----
 WTS-WAF 绕过上传  
 原内容：  
