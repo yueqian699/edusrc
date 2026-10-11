@@ -1,5 +1,5 @@
 常见后台弱口令
-admin/admin admin123 admin111 admin666 admin888 123456 1 
+admin/admin admin123 admin111 admin666 admin888 123456 1 111111
 admin/学校英文名@123  @2025(年份)  
 admin / admin@123  
 网站名+年份
